@@ -1,0 +1,65 @@
+{
+  "openapi": "3.0.3",
+  "info": {
+    "title": "Sales Module API",
+    "description": "REST API for the Sales Module - handles sales transactions, invoices, customer history, and reporting.",
+    "version": "1.0.0",
+    "contact": { "name": "Sales Module Team" }
+  },
+  "servers": [{ "url": "http://localhost:8080/api", "description": "Local development" }],
+  "paths": {
+    "/auth/login": {
+      "post": {
+        "tags": ["Auth"],
+        "summary": "Login and get JWT token",
+        "requestBody": { "required": true, "content": { "application/json": { "schema": { "type": "object", "required": ["username", "password"], "properties": { "username": { "type": "string" }, "password": { "type": "string" } } } } } },
+        "responses": { "200": { "description": "Login successful", "content": { "application/json": { "schema": { "type": "object", "properties": { "token": { "type": "string" }, "user": { "type": "object" }, "expires": { "type": "string" } } } } } }, "401": { "description": "Invalid credentials" } }
+      }
+    },
+    "/health": { "get": { "tags": ["System"], "summary": "Health check", "responses": { "200": { "description": "Service is healthy" } } } },
+    "/sales": {
+      "get": { "tags": ["Sales"], "summary": "List sales", "security": [{ "bearerAuth": [] }], "parameters": [
+        { "name": "page", "in": "query", "schema": { "type": "integer", "default": 1 } },
+        { "name": "limit", "in": "query", "schema": { "type": "integer", "default": 20 } },
+        { "name": "status", "in": "query", "schema": { "type": "string", "enum": ["pending", "completed", "cancelled"] } },
+        { "name": "customer_id", "in": "query", "schema": { "type": "integer" } },
+        { "name": "date_from", "in": "query", "schema": { "type": "string", "format": "date" } },
+        { "name": "date_to", "in": "query", "schema": { "type": "string", "format": "date" } }
+      ], "responses": { "200": { "description": "Paginated sales list" } } },
+      "post": { "tags": ["Sales"], "summary": "Create sale", "security": [{ "bearerAuth": [] }], "requestBody": { "required": true, "content": { "application/json": { "schema": { "$ref": "#/components/schemas/CreateSale" } } } }, "responses": { "201": { "description": "Sale created" } } }
+    },
+    "/sales/{id}": {
+      "get": { "tags": ["Sales"], "summary": "Get sale detail", "security": [{ "bearerAuth": [] }], "parameters": [{ "name": "id", "in": "path", "required": true, "schema": { "type": "integer" } }], "responses": { "200": { "description": "Sale details with items" } } },
+      "put": { "tags": ["Sales"], "summary": "Update sale", "security": [{ "bearerAuth": [] }], "parameters": [{ "name": "id", "in": "path", "required": true, "schema": { "type": "integer" } }], "responses": { "200": { "description": "Sale updated" } } },
+      "delete": { "tags": ["Sales"], "summary": "Delete sale", "security": [{ "bearerAuth": [] }], "parameters": [{ "name": "id", "in": "path", "required": true, "schema": { "type": "integer" } }], "responses": { "200": { "description": "Sale deleted" } } }
+    },
+    "/sales/{id}/status": {
+      "patch": { "tags": ["Sales"], "summary": "Update sale status", "security": [{ "bearerAuth": [] }], "parameters": [{ "name": "id", "in": "path", "required": true, "schema": { "type": "integer" } }], "requestBody": { "required": true, "content": { "application/json": { "schema": { "type": "object", "properties": { "status": { "type": "string", "enum": ["pending", "completed", "cancelled"] } } } } } }, "responses": { "200": { "description": "Status updated" } } }
+    },
+    "/invoices": { "get": { "tags": ["Invoices"], "summary": "List invoices", "security": [{ "bearerAuth": [] }], "responses": { "200": { "description": "Paginated invoice list" } } } },
+    "/invoices/{id}": { "get": { "tags": ["Invoices"], "summary": "Get invoice detail", "security": [{ "bearerAuth": [] }], "parameters": [{ "name": "id", "in": "path", "required": true, "schema": { "type": "integer" } }], "responses": { "200": { "description": "Invoice with items" } } } },
+    "/invoices/generate/{saleId}": { "post": { "tags": ["Invoices"], "summary": "Generate invoice for sale", "security": [{ "bearerAuth": [] }], "parameters": [{ "name": "saleId", "in": "path", "required": true, "schema": { "type": "integer" } }], "responses": { "201": { "description": "Invoice generated" } } } },
+    "/customers": { "get": { "tags": ["Customers"], "summary": "List customers", "security": [{ "bearerAuth": [] }], "responses": { "200": { "description": "Customer list" } } } },
+    "/customers/{id}/history": { "get": { "tags": ["Customers"], "summary": "Customer sales history", "security": [{ "bearerAuth": [] }], "parameters": [{ "name": "id", "in": "path", "required": true, "schema": { "type": "integer" } }], "responses": { "200": { "description": "Paginated sales history" } } } },
+    "/reports/dashboard": { "get": { "tags": ["Reports"], "summary": "Dashboard stats", "security": [{ "bearerAuth": [] }], "responses": { "200": { "description": "Dashboard statistics" } } } },
+    "/reports/summary": { "get": { "tags": ["Reports"], "summary": "Sales summary", "security": [{ "bearerAuth": [] }], "parameters": [{ "name": "period", "in": "query", "schema": { "type": "string", "enum": ["daily", "monthly", "yearly"] } }], "responses": { "200": { "description": "Sales summary data" } } } },
+    "/reports/top-products": { "get": { "tags": ["Reports"], "summary": "Top products", "security": [{ "bearerAuth": [] }], "responses": { "200": { "description": "Top selling products" } } } },
+    "/reports/revenue": { "get": { "tags": ["Reports"], "summary": "Revenue report", "security": [{ "bearerAuth": [] }], "responses": { "200": { "description": "Revenue totals" } } } },
+    "/reports/export": { "post": { "tags": ["Reports"], "summary": "Export to MIS", "security": [{ "bearerAuth": [] }], "responses": { "200": { "description": "Data exported" } } } }
+  },
+  "components": {
+    "securitySchemes": { "bearerAuth": { "type": "http", "scheme": "bearer", "bearerFormat": "JWT" } },
+    "schemas": {
+      "CreateSale": {
+        "type": "object",
+        "required": ["customer_id", "items"],
+        "properties": {
+          "customer_id": { "type": "integer" },
+          "discount_percent": { "type": "number" },
+          "notes": { "type": "string" },
+          "items": { "type": "array", "minItems": 1, "items": { "type": "object", "required": ["product_id", "quantity", "unit_price"], "properties": { "product_id": { "type": "integer" }, "quantity": { "type": "integer", "minimum": 1 }, "unit_price": { "type": "number" } } } }
+        }
+      }
+    }
+  }
+}

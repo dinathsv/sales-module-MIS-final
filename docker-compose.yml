@@ -1,0 +1,87 @@
+version: '3.8'
+
+services:
+  db:
+    image: postgres:16-alpine
+    container_name: salesdb
+    environment:
+      POSTGRES_DB: salesdb
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres123
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+      - ./backend/migrations/init.sql:/docker-entrypoint-initdb.d/init.sql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: sales-backend
+    environment:
+      DB_HOST: db
+      DB_PORT: 5432
+      DB_USER: postgres
+      DB_PASSWORD: postgres123
+      DB_NAME: salesdb
+      DB_SSLMODE: disable
+      JWT_SECRET: sales-module-secret-key-2026
+      PORT: 8080
+    ports:
+      - "8080:8080"
+    depends_on:
+      db:
+        condition: service_healthy
+    restart: unless-stopped
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: sales-frontend
+    ports:
+      - "80:80"
+    depends_on:
+      - backend
+    restart: unless-stopped
+
+  complain-db:
+    image: postgres:15-alpine
+    container_name: crm_complain_db
+    environment:
+      POSTGRES_USER: complain_user
+      POSTGRES_PASSWORD: complain_password
+      POSTGRES_DB: complain_db
+    volumes:
+      - ./complain-management/database/init.sql:/docker-entrypoint-initdb.d/init.sql
+      - complain_pgdata:/var/lib/postgresql/data
+    ports:
+      - "5433:5432"
+
+  complain-backend:
+    build: ./complain-management/backend
+    container_name: crm_complain_backend
+    ports:
+      - "8081:8080"
+    environment:
+      - DATABASE_URL=postgres://complain_user:complain_password@complain-db:5432/complain_db?sslmode=disable
+    depends_on:
+      - complain-db
+
+  complain-frontend:
+    build: ./complain-management/frontend
+    container_name: crm_complain_frontend
+    ports:
+      - "3000:3000"
+    depends_on:
+      - complain-backend
+
+volumes:
+  pgdata:
+  complain_pgdata:
